@@ -1,31 +1,76 @@
-const express = require("express")
-const app = express()
-const bodyParser = require("body-parser")
-const cookieParser = require("cookie-parser")
-const session = require("express-session")
-const PORT = 3000;
+const express = require("express");
+const app = express();
+const bodyParser = require("body-parser");
+
+const jwt = require("jsonwebtoken");
+const {
+  SECRET,
+  ROOT,
+  GUEST
+} = require("./config")
+const morgan = require("morgan");
+const PORT = 3000; 
 
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept,x-access-token");
   next();
 });
-app.use(cookieParser());
-const SESSION_SECRET = "qwerty";
 
-app.use(session({
-  secret: SESSION_SECRET,
-  resave: false,
-  saveUninitialized: true,
-  name: "ssiidd"
-}));
+app.set("secretKey",SECRET);
+app.use(bodyParser.urlencoded({extended:true}));
+app.use(bodyParser.json());
 
+// リクエストをコンソール上に出力
+app.use(morgan("dev"))
 
-app.use(bodyParser.urlencoded({extended:true})) // フォームからのPOSTを扱いやすい形式に
-app.use(bodyParser.json()) // JSONがPOSTsれた場合に扱いやすい形式に
+const apiRoutes = express.Router();
 
+app.use("/api",apiRoutes);
 
-app.use("/",require("./router.js"))
-app.listen(PORT,()=>{
-  console.log(`i'm listening at port ${PORT}`)
+apiRoutes.post("/login",(req,res)=>{
+
+  if(
+    (req.body.username === ROOT.name && req.body.password === ROOT.pass) ||
+    (req.body.username === GUEST.name && req.body.password === GUEST.pass)){
+    const payload = {
+      name: req.body.username
+    }
+    const token = jwt.sign(payload,app.get("secretKey"))
+    res.json({
+      success: true,
+      token: token,
+      error: null
+    })
+  }else{
+    res.json({
+      success: false,
+      token: null,
+      error: "login failed"
+    })
+  }
 })
+
+const VerifiyToken = require("./verifyToken");
+apiRoutes.get("/alive",VerifiyToken,(req,res,next)=>{
+
+  if([ROOT.name,GUEST.name].indexOf(req.decoded.name) === -1){
+    
+    return res.json({
+      success: false,
+      user: null,
+      error: "invalid user"
+    })
+  }
+
+  res.json({
+    success: true,
+    user: req.decoded.name,
+    error: null
+  })
+
+})
+
+app.listen(PORT,()=>{
+  console.log(`PORT ${PORT} is opened`)
+});

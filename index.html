@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <style>
+    *{
+      margin: 0;
+      padding: 0;
+    }
+    p{
+      margin: 10px;
+      padding: 10px;
+      background: midnightblue;
+      text-align: center;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <p id="push">ログイン</p>
+  <p id="confirm">ログイン出来てる？</p>
+
+  <script
+  src="https://code.jquery.com/jquery-2.2.4.min.js"
+  integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
+  crossorigin="anonymous"></script>
+
+  <script> 
+
+    $("#push").on("click",()=>{
+
+      $.ajax({
+            url: "http://127.0.0.1:3000/api/login",
+            type:'POST',
+            dataType: 'json',
+            data : {username : "root", password : "root" },
+            timeout:2000,
+        }).done(data=>{
+ 
+              const token = data.token;
+              const age = 60*20;
+              document.cookie = `JTWTOKEN=${token};max-age=${age}`
+
+        }).fail(function(XMLHttpRequest, textStatus, errorThrown) {
+              console.log("error");
+        })
+    })
+
+    $("#confirm").on("click",()=>{
+
+      const savedCookies = document.cookie;
+      const myCookies = savedCookies.split(";").reduce((cookies,cookie)=>{
+        const [key,val] = cookie.split("=");
+        cookies[key] = val;
+        
+        return cookies;
+      },{})
+
+      const { JTWTOKEN = null } = {...myCookies}
+
+      $.ajax({
+            url: "http://127.0.0.1:3000/api/alive",
+            type:'GET',
+            headers:{
+              "x-access-token" : JTWTOKEN
+            }
+      }).done(data=>{
+        console.log(`${data.user}さん、ですね！？`)
+      })
+      
+    })
+
+
+
+  </script>
+</body>
+</html>
